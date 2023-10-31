@@ -1,5 +1,7 @@
 ﻿using BepInEx;
 using System;
+using System.IO;
+using System.Reflection;
 using UnityEngine;
 using Utilla;
 
@@ -11,17 +13,39 @@ namespace lumen
 
     /* This attribute tells Utilla to look for [ModdedGameJoin] and [ModdedGameLeave] */
     [ModdedGamemode]
-    [BepInDependency("org.legoandmars.gorillatag.utilla", "1.5.0")]
+    [BepInDependency("org.legoandmars.gorillatag.utilla", "1.6.10")]
+    [BepInDependency("com.mrbanana.gorillatag.multigorillainteraction")]
+    [BepInDependency("com.pyluadotcode.gorillatag.llgtag-backend")]
     [BepInPlugin(PluginInfo.GUID, PluginInfo.Name, PluginInfo.Version)]
     public class Plugin : BaseUnityPlugin
     {
+        bool init = true;
         bool inRoom;
+        public GameObject lumen;
+        public GameObject holdLumen;
+        public AssetBundle LoadAssetBundle(string path)
+        {
+            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(path);
+            AssetBundle bundle = AssetBundle.LoadFromStream(stream);
+            stream.Close();
+            return bundle;
+        }
+
+        public static void customLogger(string logMessage, TextWriter w)
+        {
+            w.Write("\r\nLog Entry : ");
+            w.WriteLine($"{DateTime.Now.ToLongTimeString()} {DateTime.Now.ToLongDateString()}");
+            w.WriteLine("  :");
+            w.WriteLine($"  :{logMessage}");
+            w.WriteLine("-------------------------------");
+        }
 
         void Start()
         {
             /* A lot of Gorilla Tag systems will not be set up when start is called /*
 			/* Put code in OnGameInitialized to avoid null references */
-
+            var bundle = LoadAssetBundle("lumen.Assets.lumen");
+            lumen = bundle.LoadAsset<GameObject>("lumenthrowable");
             Utilla.Events.GameInitialized += OnGameInitialized;
         }
 
@@ -49,7 +73,20 @@ namespace lumen
 
         void Update()
         {
-            /* Code here runs every frame when the mod is enabled */
+            
+            if (ControllerInputPoller.instance.rightControllerPrimaryButton)
+            {
+                if (init == true) 
+                {
+                    holdLumen = Instantiate(lumen);
+                    using (StreamWriter w = File.AppendText("lorienlegaciesmod.log"))
+                    {
+                        customLogger("Lumen Activated", w);
+                    }
+                    init = false;
+                }
+                holdLumen.transform.position = GorillaTagger.Instance.rightHandTransform.transform.localPosition;
+            }
         }
 
         /* This attribute tells Utilla to call this method when a modded room is joined */
